@@ -1,0 +1,37 @@
+name: Windows Build and Hash Update
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-hash:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v1
+
+      - name: Build Solution
+        run: msbuild AnarchyInjector.sln /p:Configuration=Release
+
+      - name: Generate MD5 Hash
+        shell: powershell
+        run: |
+          $exePath = "Release\\AnarchyInjector.exe"
+          $md5 = Get-FileHash $exePath -Algorithm MD5 | Select-Object -ExpandProperty Hash
+          Set-Content -Path hash.txt -Value $md5
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add hash.txt
+          git commit -m "Update hash.txt with MD5 hash"
+          git push
