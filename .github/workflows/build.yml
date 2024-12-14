@@ -26,12 +26,10 @@ jobs:
         run: |
           $exePath = "Release\\AnarchyInjector.exe"
           $md5 = Get-FileHash $exePath -Algorithm MD5 | Select-Object -ExpandProperty Hash
-          Set-Content -Path hash.txt -Value $md5
+          echo "MD5 Hash: $md5"
 
-      - name: Commit and push changes
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add hash.txt
-          git commit -m "Update hash.txt with MD5 hash"
-          git push
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: AnarchyInjector
+          path: Release/AnarchyInjector.exe
