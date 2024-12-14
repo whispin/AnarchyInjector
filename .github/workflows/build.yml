@@ -19,7 +19,7 @@ jobs:
         uses: microsoft/setup-msbuild@v1
 
       - name: Build Solution
-        run: msbuild AnarchyInjector.sln /p:Configuration=Release
+        run: msbuild AnarchyInjector.sln /p:Configuration=Release /p:Platform=x86
 
       - name: Generate MD5 Hash
         shell: powershell

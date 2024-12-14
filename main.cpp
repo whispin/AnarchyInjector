@@ -5,9 +5,29 @@
 #include <cwchar>
 #include <fstream>
 #include <filesystem>
+#include <algorithm>
+#include <stdexcept>
 
+#define FOREGROUND_YELLOW (FOREGROUND_RED | FOREGROUND_GREEN)
+#define FOREGROUND_WHITE (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE)
 
-HANDLE hCSGO;
+HANDLE hProcess;
+
+const std::string VERSION = "1.0";
+
+void SetConsoleColor(int color) {
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	SetConsoleTextAttribute(hConsole, color);
+}
+
+void PrintBanner() {
+	SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
+	std::cout << "AnarchyInjector v" << VERSION << std::endl << std::endl;
+	SetConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+	std::cout << "ManualMap DLL injector for CS2 and CS:GO" << std::endl;
+	std::cout << "By: dest4590" << std::endl << std::endl;
+	SetConsoleColor(FOREGROUND_WHITE);
+}
 
 HANDLE GetProcessByName(const std::string& processName) {
 	PROCESSENTRY32W entry;
@@ -40,15 +60,21 @@ HANDLE GetProcessByName(const std::string& processName) {
 	return NULL;
 }
 
-std::string GetFileNameFromPath(const std::string& path) {
-	return std::filesystem::path(path).filename().string();
+HANDLE GetProcessById(DWORD processId) {
+	HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
+	if (hProcess == NULL) {
+		std::cerr << "OpenProcess failed: " << GetLastError() << std::endl;
+	}
+	return hProcess;
 }
 
-void OpenCSGO() {
-	hCSGO = GetProcessByName("csgo.exe");
-	if (!hCSGO) {
-		std::cerr << "Error: Can not find game! Please launch CS:GO." << std::endl;
-	}
+
+bool IsDigits(const std::string& str) {
+	return std::all_of(str.begin(), str.end(), ::isdigit);
+}
+
+std::string GetFileNameFromPath(const std::string& path) {
+	return std::filesystem::path(path).filename().string();
 }
 
 bool InjectDll(const std::string& path) {
@@ -59,66 +85,126 @@ bool InjectDll(const std::string& path) {
 	}
 	file.close();
 
-	LPVOID allocatedMem = VirtualAllocEx(hCSGO, NULL, path.size() + 1, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	LPVOID allocatedMem = VirtualAllocEx(hProcess, NULL, path.size() + 1, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	if (!allocatedMem) {
 		std::cerr << "VirtualAllocEx failed: " << GetLastError() << std::endl;
 		return false;
 	}
 
 	SIZE_T bytesWritten;
-	if (!WriteProcessMemory(hCSGO, allocatedMem, path.c_str(), path.size() + 1, &bytesWritten)) {
+	if (!WriteProcessMemory(hProcess, allocatedMem, path.c_str(), path.size() + 1, &bytesWritten)) {
 		std::cerr << "WriteProcessMemory failed: " << GetLastError() << std::endl;
-		VirtualFreeEx(hCSGO, allocatedMem, 0, MEM_RELEASE);
+		VirtualFreeEx(hProcess, allocatedMem, 0, MEM_RELEASE);
 		return false;
 	}
 
-	HANDLE hThread = CreateRemoteThread(hCSGO, 0, 0, (LPTHREAD_START_ROUTINE)LoadLibraryA, allocatedMem, 0, 0);
+	HANDLE hThread = CreateRemoteThread(hProcess, 0, 0, (LPTHREAD_START_ROUTINE)LoadLibraryA, allocatedMem, 0, 0);
 	if (!hThread) {
 		std::cerr << "CreateRemoteThread failed: " << GetLastError() << std::endl;
-		VirtualFreeEx(hCSGO, allocatedMem, 0, MEM_RELEASE);
+		VirtualFreeEx(hProcess, allocatedMem, 0, MEM_RELEASE);
 		return false;
 	}
 
 	WaitForSingleObject(hThread, INFINITE);
 	DWORD exitCode;
 	GetExitCodeThread(hThread, &exitCode);
-	
-	std::cout << "DLL " << GetFileNameFromPath(path) << " injected successfully\nReturn code: " << exitCode << std::endl;
 
-	VirtualFreeEx(hCSGO, allocatedMem, 0, MEM_RELEASE);
+	std::cout << "DLL ";
+	SetConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+	std::cout << GetFileNameFromPath(path);
+	SetConsoleColor(FOREGROUND_WHITE);
+	std::cout << " injected successfully\nReturn code: ";
+	SetConsoleColor(FOREGROUND_BLUE | FOREGROUND_INTENSITY);
+	std::cout << exitCode << std::endl;
+	SetConsoleColor(FOREGROUND_WHITE);
+
+	VirtualFreeEx(hProcess, allocatedMem, 0, MEM_RELEASE);
 	CloseHandle(hThread);
 	return true;
 }
 
+
 void pause() {
-	std::cout << "Press Enter to exit...";
-	std::cin.get();
+	std::cerr << std::endl;
+	system("pause");
 }
 
 int main(int argc, char* argv[]) {
-	SetConsoleTitleA("CS:GO Injector");
+	SetConsoleTitleA("AnarchyInjector");
+	PrintBanner();
 
-	if (argc < 2) {
-		std::cerr << "Usage: " << argv[0] << " <dll_path>" << std::endl;
+	std::string dllPath;
+	std::string processNameOrId;
+
+	std::string exeName = std::filesystem::path(argv[0]).filename().string();
+
+	if (argc == 2) {
+		dllPath = argv[1];
+		hProcess = GetProcessByName("cs2.exe");
+		if (!hProcess) {
+			hProcess = GetProcessByName("csgo.exe");
+			if (!hProcess) {
+				std::cerr << "Error: Could not find cs2.exe or csgo.exe.  Please launch one of the games." << std::endl;
+				pause();
+				return 1;
+			}
+			else {
+				processNameOrId = "csgo.exe";
+			}
+		}
+		else {
+			processNameOrId = "cs2.exe";
+		}
+	}
+	else if (argc == 3) {
+		processNameOrId = argv[1];
+		dllPath = argv[2];
+
+		if (IsDigits(processNameOrId)) {
+			try {
+				DWORD processId = std::stoi(processNameOrId);
+				hProcess = GetProcessById(processId);
+			}
+            catch (const std::invalid_argument&) {
+				std::cerr << "Invalid process ID: " << processNameOrId << std::endl;
+				pause();
+				return 1;
+            }
+            catch (const std::out_of_range&) {
+				std::cerr << "Process ID out of range: " << processNameOrId << std::endl;
+				pause();
+				return 1;
+            }
+		}
+		else {
+			hProcess = GetProcessByName(processNameOrId);
+		}
+		if (!hProcess) {
+			std::cerr << "Error: Can not find process: " << processNameOrId << std::endl;
+			pause();
+			return 1;
+		}
+	}
+	else {
+		std::cerr << "Usage: " << exeName << " <dll_path> (injector automatically finds cs2.exe or csgo.exe)\nOR: " << exeName << " <process_name_or_PID> <dll_path>" << std::endl;
 		pause();
 		return 1;
 	}
 
-	std::string dllpath = argv[1];
+	std::cout << "Injecting into: ";
+	SetConsoleColor(FOREGROUND_YELLOW | FOREGROUND_INTENSITY);
+	std::cout << processNameOrId << std::endl;
+	SetConsoleColor(FOREGROUND_WHITE);
 
-	OpenCSGO();
-	if (!hCSGO) {
-		pause();
-		return 1;
-	}
-
-	if (!InjectDll(dllpath)) {
+	if (!InjectDll(dllPath)) {
+		SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
 		std::cerr << "Failed to InjectDll" << std::endl;
+		SetConsoleColor(FOREGROUND_WHITE);
 		pause();
 		return 1;
 	}
 
-	CloseHandle(hCSGO);
+	CloseHandle(hProcess);
 
 	return 0;
 }
