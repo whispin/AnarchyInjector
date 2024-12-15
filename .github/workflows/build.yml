@@ -18,18 +18,34 @@ jobs:
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@v1
 
-      - name: Build Solution
+      - name: Build Solution (x86)
         run: msbuild AnarchyInjector.sln /p:Configuration=Release /p:Platform=x86
 
-      - name: Generate MD5 Hash
+      - name: Build Solution (x64)
+        run: msbuild AnarchyInjector.sln /p:Configuration=Release /p:Platform=x64
+
+      - name: Generate MD5 Hash (x86)
         shell: powershell
         run: |
           $exePath = "Release\\AnarchyInjector.exe"
           $md5 = Get-FileHash $exePath -Algorithm MD5 | Select-Object -ExpandProperty Hash
-          echo "MD5 Hash: $md5"
+          echo "MD5 Hash (x86): $md5"
 
-      - name: Upload Build Artifact
+      - name: Generate MD5 Hash (x64)
+        shell: powershell
+        run: |
+          $exePath = "x64\\Release\\AnarchyInjector.exe"
+          $md5 = Get-FileHash $exePath -Algorithm MD5 | Select-Object -ExpandProperty Hash
+          echo "MD5 Hash (x64): $md5"
+
+      - name: Upload Build Artifact (x86)
         uses: actions/upload-artifact@v3
         with:
-          name: AnarchyInjector
+          name: AnarchyInjector-x86
           path: Release/AnarchyInjector.exe
+
+      - name: Upload Build Artifact (x64)
+        uses: actions/upload-artifact@v3
+        with:
+          name: AnarchyInjector-x64
+          path: x64/Release/AnarchyInjector.exe
