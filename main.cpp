@@ -80,7 +80,7 @@ std::string GetFileNameFromPath(const std::string& path) {
 bool InjectDll(const std::string& path) {
 	std::ifstream file(path);
 	if (!file.good()) {
-		std::cerr << "Error: DLL file not found: " << path << std::endl;
+		std::cerr << "DLL file not found: " << path << std::endl;
 		return false;
 	}
 	file.close();
@@ -144,7 +144,7 @@ int main(int argc, char* argv[]) {
 		if (!hProcess) {
 			hProcess = GetProcessByName("csgo.exe");
 			if (!hProcess) {
-				std::cerr << "Error: Could not find cs2.exe or csgo.exe.  Please launch one of the games." << std::endl;
+				std::cerr << "Could not find cs2.exe or csgo.exe.  Please launch one of the games." << std::endl;
 				pause();
 				return 1;
 			}
@@ -180,7 +180,7 @@ int main(int argc, char* argv[]) {
 			hProcess = GetProcessByName(processNameOrId);
 		}
 		if (!hProcess) {
-			std::cerr << "Error: Can not find process: " << processNameOrId << std::endl;
+			std::cerr << "Can not find process: " << processNameOrId << std::endl;
 			pause();
 			return 1;
 		}
