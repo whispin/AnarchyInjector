@@ -113,7 +113,7 @@ bool InjectDll(const std::string& path) {
 	SetConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY);
 	std::cout << GetFileNameFromPath(path);
 	SetConsoleColor(FOREGROUND_WHITE);
-	std::cout << " injected successfully\nReturn code: ";
+	std::cout << " injected successfully, Return code: ";
 	SetConsoleColor(FOREGROUND_BLUE | FOREGROUND_INTENSITY);
 	std::cout << exitCode << std::endl;
 	SetConsoleColor(FOREGROUND_WHITE);
@@ -144,7 +144,7 @@ int main(int argc, char* argv[]) {
 		if (!hProcess) {
 			hProcess = GetProcessByName("csgo.exe");
 			if (!hProcess) {
-				std::cerr << "Could not find cs2.exe or csgo.exe.  Please launch one of the games." << std::endl;
+				std::cerr << "Could not find cs2.exe or csgo.exe. Please launch one of the games." << std::endl;
 				pause();
 				return 1;
 			}
