@@ -147,8 +147,6 @@ std::string GetFileNameFromPath(const std::string& path) {
 	return std::filesystem::path(path).filename().string();
 }
 
-#include <filesystem>
-
 bool InjectDll(const std::string& path) {
 	std::filesystem::path dllPath = std::filesystem::absolute(path);
 	std::string absoluteDllPath = dllPath.string();
@@ -166,6 +164,7 @@ bool InjectDll(const std::string& path) {
 		return false;
 	}
 	file.close();
+	std::cout << "[+] DLL file found." << std::endl;
 
 	SetConsoleColor(FOREGROUND_BLUE | FOREGROUND_INTENSITY);
 	std::cout << "Allocating memory in target process..." << std::endl;
@@ -230,6 +229,7 @@ bool InjectDll(const std::string& path) {
 
 	VirtualFreeEx(hProcess, allocatedMem, 0, MEM_RELEASE);
 	CloseHandle(hThread);
+	std::cout << "[+] Injection completed." << std::endl;
 	return true;
 }
 
@@ -248,20 +248,61 @@ namespace HookBypass {
 	}
 
 	BOOL UnhookMethod(const char* methodName, const wchar_t* dllName, PBYTE save_origin_bytes) {
-		LPVOID oriMethodAddr = GetProcAddress(GetModuleHandleW(dllName), methodName);
-		if (!oriMethodAddr) return FALSE;
+		HMODULE hModule = GetModuleHandleW(dllName);
+		if (!hModule) {
+			SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
+			std::cerr << "Error: GetModuleHandleW failed for " << dllName << std::endl;
+			SetConsoleColor(FOREGROUND_WHITE);
+			return FALSE;
+		}
+		LPVOID oriMethodAddr = GetProcAddress(hModule, methodName);
+		if (!oriMethodAddr) {
+			SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
+			std::cerr << "Error: GetProcAddress failed for " << methodName << " in " << dllName << std::endl;
+			SetConsoleColor(FOREGROUND_WHITE);
+			return FALSE;
+		}
 		PBYTE originalGameBytes[6];
-		ReadProcessMemory(hProcess, oriMethodAddr, originalGameBytes, sizeof(char) * 6, NULL);
+		if (!ReadProcessMemory(hProcess, oriMethodAddr, originalGameBytes, sizeof(char) * 6, NULL)) {
+			SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
+			std::cerr << "Error: ReadProcessMemory failed for " << methodName << " in " << dllName << ": " << GetLastError() << std::endl;
+			SetConsoleColor(FOREGROUND_WHITE);
+			return FALSE;
+		}
 		memcpy_s(save_origin_bytes, sizeof(char) * 6, originalGameBytes, sizeof(char) * 6);
 		PBYTE originalDllBytes[6];
 		memcpy_s(originalDllBytes, sizeof(char) * 6, oriMethodAddr, sizeof(char) * 6);
-		return WriteProcessMemory(hProcess, oriMethodAddr, originalDllBytes, sizeof(char) * 6, NULL);
+		if (!WriteProcessMemory(hProcess, oriMethodAddr, originalDllBytes, sizeof(char) * 6, NULL)) {
+			SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
+			std::cerr << "Error: WriteProcessMemory failed for " << methodName << " in " << dllName << ": " << GetLastError() << std::endl;
+			SetConsoleColor(FOREGROUND_WHITE);
+			return FALSE;
+		}
+		return TRUE;
 	}
 
 	BOOL RestoreOriginalHook(const char* methodName, const wchar_t* dllName, PBYTE save_origin_bytes) {
-		LPVOID oriMethodAddr = GetProcAddress(GetModuleHandleW(dllName), methodName);
-		if (!oriMethodAddr) return FALSE;
-		return WriteProcessMemory(hProcess, oriMethodAddr, save_origin_bytes, sizeof(char) * 6, NULL);
+		HMODULE hModule = GetModuleHandleW(dllName);
+		if (!hModule) {
+			SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
+			std::cerr << "Error: GetModuleHandleW failed for " << dllName << std::endl;
+			SetConsoleColor(FOREGROUND_WHITE);
+			return FALSE;
+		}
+		LPVOID oriMethodAddr = GetProcAddress(hModule, methodName);
+		if (!oriMethodAddr) {
+			SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
+			std::cerr << "Error: GetProcAddress failed for " << methodName << " in " << dllName << std::endl;
+			SetConsoleColor(FOREGROUND_WHITE);
+			return FALSE;
+		}
+		if (!WriteProcessMemory(hProcess, oriMethodAddr, save_origin_bytes, sizeof(char) * 6, NULL)) {
+			SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
+			std::cerr << "Error: WriteProcessMemory failed for " << methodName << " in " << dllName << ": " << GetLastError() << std::endl;
+			SetConsoleColor(FOREGROUND_WHITE);
+			return FALSE;
+		}
+		return TRUE;
 	}
 
 	enum MethodNum {
@@ -424,6 +465,7 @@ int main(int argc, char* argv[]) {
 		pause();
 		return 1;
 	}
+	std::cout << "[+] VAC hooks bypassed." << std::endl;
 
 	if (!InjectDll(dllPath)) {
 		SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
@@ -442,6 +484,9 @@ int main(int argc, char* argv[]) {
 		SetConsoleColor(FOREGROUND_YELLOW | FOREGROUND_INTENSITY);
 		std::cerr << "Warning: Failed to restore VAC hooks! This may result in a VAC ban." << std::endl;
 		SetConsoleColor(FOREGROUND_WHITE);
+	}
+	else {
+		std::cout << "[+] VAC hooks restored." << std::endl;
 	}
 
 	CloseHandle(hProcess);
