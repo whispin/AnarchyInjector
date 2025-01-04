@@ -119,10 +119,18 @@ HANDLE GetProcessById(DWORD processId) {
 			if (Process32FirstW(snapshot, &entry)) {
 				do {
 					if (entry.th32ProcessID == processId) {
-						wchar_t processNameW[MAX_PATH];
-						wcscpy_s(processNameW, MAX_PATH, entry.szExeFile);
-						std::wstring wstr(processNameW);
-						targetProcessName = std::string(wstr.begin(), wstr.end());
+						int count = WideCharToMultiByte(CP_UTF8, 0, entry.szExeFile, -1, NULL, 0, NULL, NULL);
+						if (count > 0) {
+							targetProcessName.resize(count);
+							WideCharToMultiByte(CP_UTF8, 0, entry.szExeFile, -1, &targetProcessName[0], count, NULL, NULL);
+							targetProcessName.pop_back();
+						}
+						else {
+							SetConsoleColor(FOREGROUND_YELLOW | FOREGROUND_INTENSITY);
+							std::cerr << "Warning: Could not convert process name for PID " << processId << std::endl;
+							SetConsoleColor(FOREGROUND_WHITE);
+							targetProcessName = std::to_string(processId);
+						}
 						break;
 					}
 				} while (Process32NextW(snapshot, &entry));
@@ -416,6 +424,7 @@ int main(int argc, char* argv[]) {
 		if (IsDigits(processNameOrId)) {
 			try {
 				DWORD processId = std::stoi(processNameOrId);
+				std::wstring targetNameString;
 				hProcess = GetProcessById(processId);
 			}
 			catch (const std::invalid_argument&) {

@@ -25,3 +25,10 @@ AnarchyInjector is a ManualMap DLL injector for CS2 and CS:GO that used in [Anar
 
 ```sh
 AnarchyInjector.exe <dll_path>
+```
+
+
+### Manual Process Selection
+```sh
+AnarchyInjector.exe <process_name/pid> <dll_path>
+```
