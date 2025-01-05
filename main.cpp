@@ -241,13 +241,6 @@ bool InjectDll(const std::string& path) {
 	return true;
 }
 
-void pause() {
-	SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
-	std::cerr << std::endl;
-	system("pause");
-	SetConsoleColor(FOREGROUND_WHITE);
-}
-
 namespace HookBypass {
 	void LoadLib() {
 		if (!GetModuleHandleW(L"kernel32")) LoadLibraryW(L"kernel32");
@@ -379,7 +372,10 @@ namespace HookBypass {
 
 int main(int argc, char* argv[]) {
 	SetConsoleTitleA("AnarchyInjector");
-	PrintBanner();
+
+	if (argc != 2) {
+		PrintBanner();
+	}
 
 	if (IsElevated()) {
 		SetConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY);
@@ -406,7 +402,6 @@ int main(int argc, char* argv[]) {
 				SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
 				std::cerr << "Could not find cs2.exe or csgo.exe. Please launch one of the games." << std::endl;
 				SetConsoleColor(FOREGROUND_WHITE);
-				pause();
 				return 1;
 			}
 			else {
@@ -431,14 +426,14 @@ int main(int argc, char* argv[]) {
 				SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
 				std::cerr << "Invalid process ID: " << processNameOrId << std::endl;
 				SetConsoleColor(FOREGROUND_WHITE);
-				pause();
+
 				return 1;
 			}
 			catch (const std::out_of_range&) {
 				SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
 				std::cerr << "Process ID out of range: " << processNameOrId << std::endl;
 				SetConsoleColor(FOREGROUND_WHITE);
-				pause();
+
 				return 1;
 			}
 		}
@@ -449,7 +444,7 @@ int main(int argc, char* argv[]) {
 			SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
 			std::cerr << "Can not find process: " << processNameOrId << std::endl;
 			SetConsoleColor(FOREGROUND_WHITE);
-			pause();
+
 			return 1;
 		}
 	}
@@ -457,7 +452,7 @@ int main(int argc, char* argv[]) {
 		SetConsoleColor(FOREGROUND_YELLOW | FOREGROUND_INTENSITY);
 		std::cerr << "Usage: " << exeName << " <dll_path> (injector automatically finds cs2.exe or csgo.exe)\nOR: " << exeName << " <process_name_or_PID> <dll_path>" << std::endl;
 		SetConsoleColor(FOREGROUND_WHITE);
-		pause();
+
 		return 1;
 	}
 
@@ -471,7 +466,6 @@ int main(int argc, char* argv[]) {
 		SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
 		std::cerr << "Failed to bypass VAC hooks!" << std::endl;
 		SetConsoleColor(FOREGROUND_WHITE);
-		pause();
 		return 1;
 	}
 	std::cout << "[+] VAC hooks bypassed." << std::endl;
@@ -485,7 +479,6 @@ int main(int argc, char* argv[]) {
 			std::cerr << "Failed to restore VAC hooks. This might lead to a ban." << std::endl;
 			SetConsoleColor(FOREGROUND_WHITE);
 		}
-		pause();
 		return 1;
 	}
 
