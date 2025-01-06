@@ -28,7 +28,7 @@ void PrintBanner() {
 	SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
 	std::cout << "AnarchyInjector v" << VERSION << std::endl << std::endl;
 	SetConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY);
-	std::cout << "ManualMap DLL injector for CS2 and CS:GO" << std::endl;
+	std::cout << "ManualMap DLL injector for CS2, CS:GO and Rust" << std::endl;
 	std::cout << "By: dest4590" << std::endl << std::endl;
 	SetConsoleColor(FOREGROUND_WHITE);
 }
@@ -255,7 +255,8 @@ bool InjectDll(const std::string& path) {
 		CloseHandle(hThread);
 		std::cout << "[+] Injection completed (skeet)." << std::endl;
 		return true;
-	} else {
+	}
+	else {
 		SetConsoleColor(FOREGROUND_BLUE | FOREGROUND_INTENSITY);
 		std::cout << "Allocating memory in target process..." << std::endl;
 		SetConsoleColor(FOREGROUND_WHITE);
@@ -482,10 +483,16 @@ int main(int argc, char* argv[]) {
 		if (!hProcess) {
 			hProcess = GetProcessByName("csgo.exe");
 			if (!hProcess) {
-				SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
-				std::cerr << "Could not find cs2.exe or csgo.exe. Please launch one of the games." << std::endl;
-				SetConsoleColor(FOREGROUND_WHITE);
-				return 1;
+				hProcess = GetProcessByName("RustClient.exe");
+				if (!hProcess) {
+					SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
+					std::cerr << "Could not find cs2.exe, csgo.exe, or RustClient.exe. Please launch one of the games." << std::endl;
+					SetConsoleColor(FOREGROUND_WHITE);
+					return 1;
+				}
+				else {
+					processNameOrId = "RustClient.exe";
+				}
 			}
 			else {
 				processNameOrId = "csgo.exe";
@@ -533,7 +540,7 @@ int main(int argc, char* argv[]) {
 	}
 	else {
 		SetConsoleColor(FOREGROUND_YELLOW | FOREGROUND_INTENSITY);
-		std::cerr << "Usage: " << exeName << " <dll_path> (injector automatically finds cs2.exe or csgo.exe)\nOR: " << exeName << " <process_name_or_PID> <dll_path>" << std::endl;
+		std::cerr << "Usage: " << exeName << " <dll_path> (injector automatically finds cs2.exe, csgo.exe or RustClient.exe)\nOR: " << exeName << " <process_name_or_PID> <dll_path>" << std::endl;
 		SetConsoleColor(FOREGROUND_WHITE);
 
 		return 1;
@@ -545,33 +552,44 @@ int main(int argc, char* argv[]) {
 	SetConsoleColor(FOREGROUND_WHITE);
 
 	HookBypass::LoadLib();
-	if (!HookBypass::BypassCSGO_hook()) {
-		SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
-		std::cerr << "Failed to bypass VAC hooks!" << std::endl;
-		SetConsoleColor(FOREGROUND_WHITE);
-		return 1;
+	if (targetProcessName == "cs2.exe" || targetProcessName == "csgo.exe") {
+		if (!HookBypass::BypassCSGO_hook()) {
+			SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
+			std::cerr << "Failed to bypass VAC hooks!" << std::endl;
+			SetConsoleColor(FOREGROUND_WHITE);
+			return 1;
+		}
+		std::cout << "[+] VAC hooks bypassed." << std::endl;
 	}
-	std::cout << "[+] VAC hooks bypassed." << std::endl;
+	else {
+		SetConsoleColor(FOREGROUND_YELLOW | FOREGROUND_INTENSITY);
+		std::cout << "[!] VAC bypass not applied as the target process is not CS2 or CS:GO." << std::endl;
+		SetConsoleColor(FOREGROUND_WHITE);
+	}
 
 	if (!InjectDll(dllPath)) {
 		SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
 		std::cerr << "Failed to InjectDll" << std::endl;
 		SetConsoleColor(FOREGROUND_WHITE);
-		if (!HookBypass::RestoreCSGO_hook()) {
-			SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
-			std::cerr << "Failed to restore VAC hooks. This might lead to a ban." << std::endl;
-			SetConsoleColor(FOREGROUND_WHITE);
+		if (targetProcessName == "cs2.exe" || targetProcessName == "csgo.exe") {
+			if (!HookBypass::RestoreCSGO_hook()) {
+				SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
+				std::cerr << "Failed to restore VAC hooks. This might lead to a ban." << std::endl;
+				SetConsoleColor(FOREGROUND_WHITE);
+			}
 		}
 		return 1;
 	}
 
-	if (!HookBypass::RestoreCSGO_hook()) {
-		SetConsoleColor(FOREGROUND_YELLOW | FOREGROUND_INTENSITY);
-		std::cerr << "Warning: Failed to restore VAC hooks! This may result in a VAC ban." << std::endl;
-		SetConsoleColor(FOREGROUND_WHITE);
-	}
-	else {
-		std::cout << "[+] VAC hooks restored." << std::endl;
+	if (targetProcessName == "cs2.exe" || targetProcessName == "csgo.exe") {
+		if (!HookBypass::RestoreCSGO_hook()) {
+			SetConsoleColor(FOREGROUND_YELLOW | FOREGROUND_INTENSITY);
+			std::cerr << "Warning: Failed to restore VAC hooks! This may result in a VAC ban." << std::endl;
+			SetConsoleColor(FOREGROUND_WHITE);
+		}
+		else {
+			std::cout << "[+] VAC hooks restored." << std::endl;
+		}
 	}
 
 	CloseHandle(hProcess);
