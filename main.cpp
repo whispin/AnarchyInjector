@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <stdexcept>
 #include <sddl.h>
+#include <thread>
+#include <chrono>
 
 #define FOREGROUND_YELLOW (FOREGROUND_RED | FOREGROUND_GREEN)
 #define FOREGROUND_WHITE (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE)
@@ -174,71 +176,152 @@ bool InjectDll(const std::string& path) {
 	file.close();
 	std::cout << "[+] DLL file found." << std::endl;
 
-	SetConsoleColor(FOREGROUND_BLUE | FOREGROUND_INTENSITY);
-	std::cout << "Allocating memory in target process..." << std::endl;
-	SetConsoleColor(FOREGROUND_WHITE);
-	LPVOID allocatedMem = VirtualAllocEx(hProcess, NULL, absoluteDllPath.size() + 1, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-	if (!allocatedMem) {
-		SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
-		std::cerr << "Error: VirtualAllocEx failed: " << GetLastError() << std::endl;
+	if (dllFileName == "skeet.dll") {
+		SetConsoleColor(FOREGROUND_BLUE | FOREGROUND_INTENSITY);
+		std::cout << "Performing skeet-specific injection..." << std::endl;
 		SetConsoleColor(FOREGROUND_WHITE);
-		return false;
-	}
-	SetConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY);
-	std::cout << "Memory allocated at address: " << allocatedMem << std::endl;
-	SetConsoleColor(FOREGROUND_WHITE);
 
-	SetConsoleColor(FOREGROUND_BLUE | FOREGROUND_INTENSITY);
-	std::cout << "Writing DLL path to target process..." << std::endl;
-	SetConsoleColor(FOREGROUND_WHITE);
-	SIZE_T bytesWritten;
-	if (!WriteProcessMemory(hProcess, allocatedMem, absoluteDllPath.c_str(), absoluteDllPath.size() + 1, &bytesWritten)) {
-		SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
-		std::cerr << "Error: WriteProcessMemory failed: " << GetLastError() << std::endl;
+		VirtualAllocEx(hProcess, (LPVOID)0x43310000, 0x2FC000u, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE); // for skeet
+		VirtualAllocEx(hProcess, 0, 0x1000u, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE); // for skeet
+
+		LPVOID lpPathAddress = VirtualAllocEx(hProcess, nullptr, absoluteDllPath.size() + 1, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+		if (lpPathAddress == nullptr) {
+			SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
+			std::cerr << "Error: VirtualAllocEx failed (skeet path alloc): " << GetLastError() << std::endl;
+			SetConsoleColor(FOREGROUND_WHITE);
+			return false;
+		}
+		SetConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+		std::cout << "Memory allocated for path at address: " << lpPathAddress << std::endl;
 		SetConsoleColor(FOREGROUND_WHITE);
+
+		if (!WriteProcessMemory(hProcess, lpPathAddress, absoluteDllPath.c_str(), absoluteDllPath.size() + 1, nullptr)) {
+			SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
+			std::cerr << "Error: WriteProcessMemory failed (skeet path write): " << GetLastError() << std::endl;
+			SetConsoleColor(FOREGROUND_WHITE);
+			VirtualFreeEx(hProcess, lpPathAddress, 0, MEM_RELEASE);
+			return false;
+		}
+		std::cout << "[+] DLL path written successfully." << std::endl;
+
+		HMODULE hKernel32 = GetModuleHandleA("kernel32.dll");
+		if (!hKernel32) {
+			SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
+			std::cerr << "Error: GetModuleHandleA failed for kernel32.dll" << std::endl;
+			SetConsoleColor(FOREGROUND_WHITE);
+			VirtualFreeEx(hProcess, lpPathAddress, 0, MEM_RELEASE);
+			return false;
+		}
+
+		FARPROC lpLoadLibraryA = GetProcAddress(hKernel32, "LoadLibraryA");
+		if (!lpLoadLibraryA) {
+			SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
+			std::cerr << "Error: GetProcAddress failed for LoadLibraryA" << std::endl;
+			SetConsoleColor(FOREGROUND_WHITE);
+			VirtualFreeEx(hProcess, lpPathAddress, 0, MEM_RELEASE);
+			return false;
+		}
+		std::cout << "[+] LoadLibraryA address found." << std::endl;
+
+		HANDLE hThread = CreateRemoteThread(hProcess, nullptr, 0, (LPTHREAD_START_ROUTINE)lpLoadLibraryA, lpPathAddress, 0, nullptr);
+		if (!hThread) {
+			SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
+			std::cerr << "Error: CreateRemoteThread failed (skeet injection): " << GetLastError() << std::endl;
+			SetConsoleColor(FOREGROUND_WHITE);
+			VirtualFreeEx(hProcess, lpPathAddress, 0, MEM_RELEASE);
+			return false;
+		}
+		SetConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+		std::cout << "Remote thread created with handle: " << hThread << std::endl;
+		SetConsoleColor(FOREGROUND_WHITE);
+
+		WaitForSingleObject(hThread, INFINITE);
+		DWORD exitCode;
+		GetExitCodeThread(hThread, &exitCode);
+
+		std::cout << "DLL ";
+		SetConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+		std::cout << dllFileName;
+		SetConsoleColor(FOREGROUND_WHITE);
+		std::cout << " injected successfully into ";
+		SetConsoleColor(FOREGROUND_YELLOW | FOREGROUND_INTENSITY);
+		std::cout << targetProcessName;
+		SetConsoleColor(FOREGROUND_WHITE);
+		std::cout << ", Return code: ";
+		SetConsoleColor(FOREGROUND_BLUE | FOREGROUND_INTENSITY);
+		std::cout << exitCode << std::endl;
+		SetConsoleColor(FOREGROUND_WHITE);
+
+		CloseHandle(hThread);
+		std::cout << "[+] Injection completed (skeet)." << std::endl;
+		return true;
+	} else {
+		SetConsoleColor(FOREGROUND_BLUE | FOREGROUND_INTENSITY);
+		std::cout << "Allocating memory in target process..." << std::endl;
+		SetConsoleColor(FOREGROUND_WHITE);
+		LPVOID allocatedMem = VirtualAllocEx(hProcess, NULL, absoluteDllPath.size() + 1, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+		if (!allocatedMem) {
+			SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
+			std::cerr << "Error: VirtualAllocEx failed: " << GetLastError() << std::endl;
+			SetConsoleColor(FOREGROUND_WHITE);
+			return false;
+		}
+		SetConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+		std::cout << "Memory allocated at address: " << allocatedMem << std::endl;
+		SetConsoleColor(FOREGROUND_WHITE);
+
+		SetConsoleColor(FOREGROUND_BLUE | FOREGROUND_INTENSITY);
+		std::cout << "Writing DLL path to target process..." << std::endl;
+		SetConsoleColor(FOREGROUND_WHITE);
+		SIZE_T bytesWritten;
+		if (!WriteProcessMemory(hProcess, allocatedMem, absoluteDllPath.c_str(), absoluteDllPath.size() + 1, &bytesWritten)) {
+			SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
+			std::cerr << "Error: WriteProcessMemory failed: " << GetLastError() << std::endl;
+			SetConsoleColor(FOREGROUND_WHITE);
+			VirtualFreeEx(hProcess, allocatedMem, 0, MEM_RELEASE);
+			return false;
+		}
+		SetConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+		std::cout << "Successfully wrote " << bytesWritten << " bytes to target process." << std::endl;
+		SetConsoleColor(FOREGROUND_WHITE);
+
+		SetConsoleColor(FOREGROUND_BLUE | FOREGROUND_INTENSITY);
+		std::cout << "Creating remote thread in target process..." << std::endl;
+		SetConsoleColor(FOREGROUND_WHITE);
+		HANDLE hThread = CreateRemoteThread(hProcess, 0, 0, (LPTHREAD_START_ROUTINE)LoadLibraryA, allocatedMem, 0, 0);
+		if (!hThread) {
+			SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
+			std::cerr << "Error: CreateRemoteThread failed: " << GetLastError() << std::endl;
+			SetConsoleColor(FOREGROUND_WHITE);
+			VirtualFreeEx(hProcess, allocatedMem, 0, MEM_RELEASE);
+			return false;
+		}
+		SetConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+		std::cout << "Remote thread created with handle: " << hThread << std::endl;
+		SetConsoleColor(FOREGROUND_WHITE);
+
+		WaitForSingleObject(hThread, INFINITE);
+		DWORD exitCode;
+		GetExitCodeThread(hThread, &exitCode);
+
+		std::cout << "DLL ";
+		SetConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+		std::cout << dllFileName;
+		SetConsoleColor(FOREGROUND_WHITE);
+		std::cout << " injected successfully into ";
+		SetConsoleColor(FOREGROUND_YELLOW | FOREGROUND_INTENSITY);
+		std::cout << targetProcessName;
+		SetConsoleColor(FOREGROUND_WHITE);
+		std::cout << ", Return code: ";
+		SetConsoleColor(FOREGROUND_BLUE | FOREGROUND_INTENSITY);
+		std::cout << exitCode << std::endl;
+		SetConsoleColor(FOREGROUND_WHITE);
+
 		VirtualFreeEx(hProcess, allocatedMem, 0, MEM_RELEASE);
-		return false;
+		CloseHandle(hThread);
+		std::cout << "[+] Injection completed." << std::endl;
+		return true;
 	}
-	SetConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY);
-	std::cout << "Successfully wrote " << bytesWritten << " bytes to target process." << std::endl;
-	SetConsoleColor(FOREGROUND_WHITE);
-
-	SetConsoleColor(FOREGROUND_BLUE | FOREGROUND_INTENSITY);
-	std::cout << "Creating remote thread in target process..." << std::endl;
-	SetConsoleColor(FOREGROUND_WHITE);
-	HANDLE hThread = CreateRemoteThread(hProcess, 0, 0, (LPTHREAD_START_ROUTINE)LoadLibraryA, allocatedMem, 0, 0);
-	if (!hThread) {
-		SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
-		std::cerr << "Error: CreateRemoteThread failed: " << GetLastError() << std::endl;
-		SetConsoleColor(FOREGROUND_WHITE);
-		VirtualFreeEx(hProcess, allocatedMem, 0, MEM_RELEASE);
-		return false;
-	}
-	SetConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY);
-	std::cout << "Remote thread created with handle: " << hThread << std::endl;
-	SetConsoleColor(FOREGROUND_WHITE);
-
-	WaitForSingleObject(hThread, INFINITE);
-	DWORD exitCode;
-	GetExitCodeThread(hThread, &exitCode);
-
-	std::cout << "DLL ";
-	SetConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY);
-	std::cout << dllFileName;
-	SetConsoleColor(FOREGROUND_WHITE);
-	std::cout << " injected successfully into ";
-	SetConsoleColor(FOREGROUND_YELLOW | FOREGROUND_INTENSITY);
-	std::cout << targetProcessName;
-	SetConsoleColor(FOREGROUND_WHITE);
-	std::cout << ", Return code: ";
-	SetConsoleColor(FOREGROUND_BLUE | FOREGROUND_INTENSITY);
-	std::cout << exitCode << std::endl;
-	SetConsoleColor(FOREGROUND_WHITE);
-
-	VirtualFreeEx(hProcess, allocatedMem, 0, MEM_RELEASE);
-	CloseHandle(hThread);
-	std::cout << "[+] Injection completed." << std::endl;
-	return true;
 }
 
 namespace HookBypass {
