@@ -27,14 +27,14 @@ jobs:
       - name: Generate MD5 Hash (x86)
         shell: powershell
         run: |
-          $exePath = "Release\\AnarchyInjector.exe"
+          $exePath = "Release\\AnarchyInjector_x86.exe"
           $md5 = Get-FileHash $exePath -Algorithm MD5 | Select-Object -ExpandProperty Hash
           echo "MD5 Hash (x86): $md5"
 
       - name: Generate MD5 Hash (x64)
         shell: powershell
         run: |
-          $exePath = "x64\\Release\\AnarchyInjector.exe"
+          $exePath = "x64\\Release\\AnarchyInjector_x64.exe"
           $md5 = Get-FileHash $exePath -Algorithm MD5 | Select-Object -ExpandProperty Hash
           echo "MD5 Hash (x64): $md5"
 
@@ -42,10 +42,10 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: AnarchyInjector-x86
-          path: Release/AnarchyInjector.exe
+          path: Release/AnarchyInjector_x86.exe
 
       - name: Upload Build Artifact (x64)
         uses: actions/upload-artifact@v3
         with:
           name: AnarchyInjector-x64
-          path: x64/Release/AnarchyInjector.exe
+          path: x64/Release/AnarchyInjector_x64.exe
