@@ -38,6 +38,12 @@ jobs:
           $md5 = Get-FileHash $exePath -Algorithm MD5 | Select-Object -ExpandProperty Hash
           echo "MD5 Hash (x64): $md5"
 
+      - name: Get hash commit
+        shell: powershell
+        run: |
+          $ARTIFACT_HASH=git rev-parse --short HEAD
+          echo "ARTIFACT_HASH=$ARTIFACT_HASH" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Upload Build Artifact (x86)
         uses: actions/upload-artifact@v3
         with:
@@ -49,3 +55,14 @@ jobs:
         with:
           name: AnarchyInjector-x64
           path: x64/Release/AnarchyInjector_x64.exe
+
+      - name: Release
+        id: release
+        uses: ncipollo/release-action@v1
+        with:
+          body: |
+            Automatic pre-release created by GitHub Actions
+          name: "Nightly Build ${{ env.ARTIFACT_HASH }}"
+          tag: "prerelease-${{ env.ARTIFACT_HASH }}"
+          prerelease: true
+          artifacts: "x64/Release/AnarchyInjector_x64.exe,Release/AnarchyInjector_x86.exe"
