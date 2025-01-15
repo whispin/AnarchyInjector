@@ -457,7 +457,7 @@ namespace HookBypass {
 int main(int argc, char* argv[]) {
 	SetConsoleTitleA("AnarchyInjector");
 
-	if (argc != 2) {
+	if (argc == 1) {
 		PrintBanner();
 	}
 
@@ -465,10 +465,7 @@ int main(int argc, char* argv[]) {
 		SetConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY);
 		std::cout << "[+] Injector is running with administrator privileges." << std::endl;
 	}
-	else {
-		SetConsoleColor(FOREGROUND_YELLOW | FOREGROUND_INTENSITY);
-		std::cout << "[!] Injector is NOT running with administrator privileges. Some injections might fail." << std::endl;
-	}
+
 	SetConsoleColor(FOREGROUND_WHITE);
 	std::cout << std::endl;
 
