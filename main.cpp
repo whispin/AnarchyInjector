@@ -28,8 +28,8 @@ void PrintBanner() {
 	SetConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
 	std::cout << "AnarchyInjector v" << VERSION << std::endl << std::endl;
 	SetConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY);
-	std::cout << "ManualMap DLL injector for CS2, CS:GO and Rust" << std::endl;
-	std::cout << "By: dest4590" << std::endl << std::endl;
+	std::cout << "ManualMap DLL injector for CS2, CS:GO and other games." << std::endl;
+	std::cout << "By: dest4590" << std::endl;
 	SetConsoleColor(FOREGROUND_WHITE);
 }
 
@@ -537,8 +537,10 @@ int main(int argc, char* argv[]) {
 	}
 	else {
 		SetConsoleColor(FOREGROUND_YELLOW | FOREGROUND_INTENSITY);
-		std::cerr << "Usage: " << exeName << " <dll_path> (injector automatically finds cs2.exe, csgo.exe or RustClient.exe)\nOR: " << exeName << " <process_name_or_PID> <dll_path>" << std::endl;
+		std::cerr << "Usage: " << exeName << " <dll_path> (injector automatically finds cs2.exe, csgo.exe or RustClient.exe)\nOR: " << exeName << " <process_name_or_PID> <dll_path>" << std::endl << std::endl;
 		SetConsoleColor(FOREGROUND_WHITE);
+
+		system("pause");
 
 		return 1;
 	}
