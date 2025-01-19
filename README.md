@@ -1,6 +1,8 @@
-# AnarchyInjector
-
-AnarchyInjector is a ManualMap DLL injector for CS2 and CS:GO that used in [AnarchyLoader](https://github.com/AnarchyLoader/AnarchyLoader)
+<div align="center">
+   <img src="https://github.com/user-attachments/assets/c451e106-ed84-4fc4-9ad2-66f806999e27" width="150"></img>
+   <h1>AnarchyInjector</h1>
+   AnarchyInjector is a ManualMap DLL injector for CS2 and CS:GO and other games that used in <a href="https://github.com/AnarchyLoader/AnarchyLoader">AnarchyLoader</a>
+</div>
 
 ## Features
 
