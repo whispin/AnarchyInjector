@@ -45,13 +45,13 @@ jobs:
           echo "ARTIFACT_HASH=$ARTIFACT_HASH" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Upload Build Artifact (x86)
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: AnarchyInjector-x86
           path: Release/AnarchyInjector_x86.exe
 
       - name: Upload Build Artifact (x64)
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: AnarchyInjector-x64
           path: x64/Release/AnarchyInjector_x64.exe
