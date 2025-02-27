@@ -621,9 +621,6 @@ namespace SteamInjection {
 			}
 		}
 		else {
-			Helper::SetConsoleColor(FOREGROUND_YELLOW | FOREGROUND_INTENSITY);
-			std::cout << "Steam DLL not found: " << steamDllPath << std::endl;
-			Helper::SetConsoleColor(FOREGROUND_WHITE);
 			return false;
 		}
 	}
@@ -844,7 +841,7 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	if (isSupportedGame)
+	if (isSupportedGame && !disableBypass)
 	{
 		GameSpecific::RestoreHookBypass(targetProcessName);
 	}
