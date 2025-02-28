@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+  watch:
+    type: started
 
 jobs:
   build-and-hash:
@@ -55,14 +57,3 @@ jobs:
         with:
           name: AnarchyInjector-x64
           path: x64/Release/AnarchyInjector_x64.exe
-
-      - name: Release
-        id: release
-        uses: ncipollo/release-action@v1
-        with:
-          body: |
-            Automatic pre-release created by GitHub Actions
-          name: "Nightly Build ${{ env.ARTIFACT_HASH }}"
-          tag: "prerelease-${{ env.ARTIFACT_HASH }}"
-          prerelease: true
-          artifacts: "x64/Release/AnarchyInjector_x64.exe,Release/AnarchyInjector_x86.exe"
