@@ -20,7 +20,7 @@
 HANDLE hProcess = nullptr;
 std::wstring targetProcessName;
 
-const std::string INJECTOR_VERSION = "1.3";
+const std::string INJECTOR_VERSION = "1.4";
 const std::vector<std::wstring> SUPPORTED_GAMES = { L"cs2.exe",
 	L"csgo.exe",
 	L"RustClient.exe",
