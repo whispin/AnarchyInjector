@@ -4,6 +4,10 @@
    AnarchyInjector is a ManualMap DLL injector for CS2 and CS:GO and other games that used in <a href="https://github.com/AnarchyLoader/AnarchyLoader">AnarchyLoader</a>
 </div>
 
+> [!CAUTION]
+> Using this injector in online games is not recommended as it can result in a ban.
+> Play at your own risk. This warning is given to avoid any negative consequences. Be responsible.
+
 ## Features
 
 - Injects DLLs into CS2 and CS:GO processes.

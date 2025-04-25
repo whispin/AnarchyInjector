@@ -20,7 +20,7 @@
 HANDLE hProcess = nullptr;
 std::wstring targetProcessName;
 
-const std::string INJECTOR_VERSION = "1.3";
+const std::string INJECTOR_VERSION = "1.4";
 const std::vector<std::wstring> SUPPORTED_GAMES = { L"cs2.exe",
 	L"csgo.exe",
 	L"RustClient.exe",
@@ -233,7 +233,30 @@ namespace MemoryUtils {
 	}
 }
 
+LPVOID ntOpenFile = GetProcAddress(LoadLibraryW(L"ntdll"), "NtOpenFile"); // https://github.com/v3ctra/load-lib-injector
+
 namespace Injection {
+	void bypass(HANDLE hProcess) // https://github.com/v3ctra/load-lib-injector
+	{
+		// Restore original NtOpenFile from external process
+		//credits: Daniel Krupiñski(pozdro dla ciebie byczku <3)
+		if (ntOpenFile) {
+			char originalBytes[5];
+			memcpy(originalBytes, ntOpenFile, 5);
+			WriteProcessMemory(hProcess, ntOpenFile, originalBytes, 5, NULL);
+		}
+	}
+
+	void backup(HANDLE hProcess) // https://github.com/v3ctra/load-lib-injector
+	{
+		if (ntOpenFile) {
+			//So, when I patching first 5 bytes I need to backup them to 0? (I think)
+			char originalBytes[5];
+			memcpy(originalBytes, ntOpenFile, 5);
+			WriteProcessMemory(hProcess, ntOpenFile, originalBytes, 0, NULL);
+		}
+	}
+
 	bool InjectDll(const std::string& path, HANDLE hProcess) {
 		std::filesystem::path dllPath = std::filesystem::absolute(path);
 		std::string absoluteDllPath = dllPath.string();
@@ -258,6 +281,8 @@ namespace Injection {
 			std::cout << "Performing skeet-specific injection..." << std::endl;
 			Helper::SetConsoleColor(FOREGROUND_WHITE);
 
+			bypass(hProcess);
+
 			VirtualAllocEx(hProcess, (LPVOID)0x43310000, 0x2FC000u, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE); // for skeet
 			VirtualAllocEx(hProcess, 0, 0x1000u, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE); // for skeet
 
@@ -279,6 +304,7 @@ namespace Injection {
 				VirtualFreeEx(hProcess, lpPathAddress, 0, MEM_RELEASE);
 				return false;
 			}
+
 			std::cout << "[+] DLL path written successfully." << std::endl;
 
 			HMODULE hKernel32 = GetModuleHandleA("kernel32.dll");
@@ -330,6 +356,7 @@ namespace Injection {
 			Helper::SetConsoleColor(FOREGROUND_WHITE);
 
 			CloseHandle(hThread);
+			backup(hProcess);
 			std::cout << "[+] Injection completed (skeet)." << std::endl;
 			return true;
 		}
@@ -821,8 +848,10 @@ int main(int argc, char* argv[]) {
 	std::wcout << L"Process found: " << targetProcessName << std::endl;
 	Helper::SetConsoleColor(FOREGROUND_WHITE);
 
+	std::string dllFileName = Helper::GetFileNameFromPath(dllPath);
+
 	bool disableBypass = injectedIntoSteam;
-	if (isSupportedGame)
+	if (isSupportedGame && dllFileName != "skeet.dll")
 	{
 		if (!GameSpecific::ApplyHookBypass(targetProcessName, disableBypass))
 		{
@@ -841,7 +870,7 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	if (isSupportedGame && !disableBypass)
+	if ((isSupportedGame && !disableBypass) && dllFileName != "skeet.dll")
 	{
 		GameSpecific::RestoreHookBypass(targetProcessName);
 	}
