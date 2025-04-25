@@ -16,16 +16,27 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - name: Checkout Osiris
+        uses: actions/checkout@v3
+        with:
+          repository: danielkrupinski/Osiris
+          path: Osiris 
 
       - name: Set up MSBuild
-        uses: microsoft/setup-msbuild@v1
-
+        uses: microsoft/setup-msbuild@v2
+      - name: Set toolset
+        if: matrix.toolset == 'ClangCL'
+        run: echo "toolset=/p:PlatformToolset=${{ matrix.toolset }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Build Osiris.dll
+        shell: cmd
+        run: msbuild D:\a\AnarchyInjector\AnarchyInjector\Osiris\Osiris.sln /p:Platform=x64 /p:Configuration=${{ matrix.configuration }} ${{ env.toolset }} /p:OutDir=D:\a\AnarchyInjector\AnarchyInjector\
+      - name: show build result
+        shell: cmd
+        run: dir D:\a\AnarchyInjector\AnarchyInjector\
       - name: Build Solution (x86)
         run: msbuild AnarchyInjector.sln /p:Configuration=Release /p:Platform=x86
-
       - name: Build Solution (x64)
         run: msbuild AnarchyInjector.sln /p:Configuration=Release /p:Platform=x64
-
       - name: Generate MD5 Hash (x86)
         shell: powershell
         run: |
@@ -46,11 +57,11 @@ jobs:
           $ARTIFACT_HASH=git rev-parse --short HEAD
           echo "ARTIFACT_HASH=$ARTIFACT_HASH" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
-      - name: Upload Build Artifact (x86)
+      - name: Upload Build Osiris.dll
         uses: actions/upload-artifact@v4
         with:
-          name: AnarchyInjector-x86
-          path: Release/AnarchyInjector_x86.exe
+           name: Osiris.dll
+           path: D:\a\AnarchyInjector\AnarchyInjector\Osiris.dll
 
       - name: Upload Build Artifact (x64)
         uses: actions/upload-artifact@v4
